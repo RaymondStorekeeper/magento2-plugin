@@ -99,3 +99,21 @@ Disconnecting your Magento 2 store can be done in two ways
 # Debugging
 
 If you're having any issues using the plugin, the first thing to do would be checking the `magento2/var/log/storekeeper.log` for any errors.
+
+# Running integration tests
+
+1. Prepare your enviroment according to Magento 2 integration testing documentation https://developer.adobe.com/commerce/testing/guide/integration/
+
+2. To run integration tests from a specific directory tree in Magento 2, use the following command:
+```
+cd dev/tests/integration
+
+../../../vendor/bin/phpunit ../../../vendor/storekeeper/magento2-plugin/Test/Integration
+```
+
+2. To run a single test class in Magento 2, use the following command:
+```
+cd dev/tests/integration
+
+../../../vendor/bin/phpunit ../../../vendor/storekeeper/magento2-plugin/Test/Integration/OrderCreationTest.php
+```

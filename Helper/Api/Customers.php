@@ -12,6 +12,9 @@ use Magento\Sales\Model\Order\Address;
 use Psr\Log\LoggerInterface;
 use StoreKeeper\ApiWrapper\Exception\GeneralException;
 
+/**
+ * @depracated
+ */
 class Customers extends AbstractHelper
 {
     private const SEPARATE_STREET_NAME_AND_NUMBER_PATTERN = "/\A(.*?)\s+(\d+[a-zA-Z]{0,1}\s{0,1}[-]{1}\s{0,1}\d*[a-zA-Z]{0,1}|\d+[a-zA-Z-]{0,1}\d*[a-zA-Z]{0,1})/";
@@ -43,31 +46,6 @@ class Customers extends AbstractHelper
         $this->logger = $logger;
 
         parent::__construct($context);
-    }
-
-    /**
-     * Find customer relation dataId by email
-     *
-     * @param $email
-     * @param $storeId
-     * @return false|int
-     */
-    public function findCustomerRelationDataIdByEmail($email, $storeId)
-    {
-        $id = false;
-        if (!empty($email)) {
-            try {
-                $customer = $this->authHelper->getModule('ShopModule', $storeId)->findShopCustomerBySubuserEmail([
-                    'email' => $email
-                ]);
-                $id = (int)$customer['id'];
-            } catch (GeneralException $exception) {
-                // Customer not found in StoreKeeper
-                $this->logger->error($exception->getMessage());
-            }
-        }
-
-        return $id;
     }
 
     /**

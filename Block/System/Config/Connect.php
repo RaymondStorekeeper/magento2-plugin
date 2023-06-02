@@ -86,7 +86,6 @@ class Connect extends Field
                     ]
                 );
         } else {
-
             $url = $this->getConnectUrl();
             $button = $this->getLayout()->createBlock('Magento\Backend\Block\Widget\Button')->setData(
                 [

@@ -11,7 +11,7 @@ use Magento\Sales\Model\Order\Item;
 use Magento\Sales\Model\Order;
 use Magento\Store\Model\StoreManagerInterface;
 
-class OrderCreationTest extends AbstractTest
+class OrderCreationGuestTest extends AbstractGuestTest
 {
     protected function setUp(): void
     {
@@ -25,14 +25,13 @@ class OrderCreationTest extends AbstractTest
      * @magentoConfigFixture current_store storekeeper_general/general/storekeeper_sync_auth {"rights":"subuser","mode":"apikey","account":"centroitbv","subaccount":"64537ca6-18ae-41e5-a6a9-20b803f97117","user":"sync","apikey":"REDACTED"}
      * @magentoConfigFixture current_store storekeeper_general/general/storekeeper_sync_mode 4
      */
-    public function testOrderCreation()
+    public function testGuestOrderCreation()
     {
-        $customer = $this->getCustomer();
         $orderData = $this->getOrderData();
         $order = $this->createOrder(
             $orderData['billingAddress'],
             $orderData['shippingAddress'],
-            $customer,
+            null,
             $orderData['payment'],
             $orderData['orderItem']
         );

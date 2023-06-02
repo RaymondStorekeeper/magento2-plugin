@@ -11,6 +11,7 @@ use Magento\Sales\Model\OrderRepository;
 use StoreKeeper\StoreKeeper\Helper\Api\Auth;
 use StoreKeeper\StoreKeeper\Model\Invoice;
 use Magento\Framework\Controller\ResultInterface;
+use StoreKeeper\StoreKeeper\Api\PaymentApiClient;
 
 class Finish extends Action
 {
@@ -23,6 +24,7 @@ class Finish extends Action
     private QuoteRepository $quoteRepository;
     private Auth $authHelper;
     private Invoice $invoice;
+    private PaymentApiClient $paymentApiClient;
 
     /**
      * Finish constructor
@@ -33,6 +35,7 @@ class Finish extends Action
      * @param QuoteRepository $quoteRepository
      * @param Auth $authHelper
      * @param Invoice $invoice
+     * @param PaymentApiClient $paymentApiClient
      */
     public function __construct(
         Context $context,
@@ -40,13 +43,15 @@ class Finish extends Action
         OrderRepository $orderRepository,
         QuoteRepository $quoteRepository,
         Auth $authHelper,
-        Invoice $invoice
+        Invoice $invoice,
+        PaymentApiClient $paymentApiClient
     ) {
         $this->checkoutSession = $checkoutSession;
         $this->orderRepository = $orderRepository;
         $this->quoteRepository = $quoteRepository;
         $this->authHelper = $authHelper;
         $this->invoice = $invoice;
+        $this->paymentApiClient = $paymentApiClient;
         parent::__construct($context);
     }
 
@@ -63,7 +68,7 @@ class Finish extends Action
         $params = $this->getRequest()->getParams();
         $order = $this->orderRepository->get($params['orderID']);
         $storekeeperPaymentId = $order->getStorekeeperPaymentId();
-        $payment = $this->authHelper->getModule('ShopModule', $order->getStoreid())->syncWebShopPaymentWithReturn($storekeeperPaymentId);
+        $payment = $this->paymentApiClient->syncWebShopPaymentWithReturn($order->getStoreId(), $storekeeperPaymentId);
 
         if ($payment['status'] == self::STOREKEEPER_PAYMENT_STATUS_PAID) {
             $this->invoice->create($order);

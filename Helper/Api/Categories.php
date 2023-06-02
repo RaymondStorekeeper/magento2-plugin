@@ -9,6 +9,9 @@ use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Store\Model\StoreManagerInterface;
 use Parsedown;
 
+/**
+ * @depracated
+ */
 class Categories extends AbstractHelper
 {
     private Auth $authHelper;

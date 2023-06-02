@@ -11,9 +11,10 @@ use StoreKeeper\StoreKeeper\Model\OrderItems;
 use StoreKeeper\StoreKeeper\Model\CustomerInfo;
 use StoreKeeper\StoreKeeper\Helper\Api\Auth;
 use StoreKeeper\StoreKeeper\Helper\Api\Orders as OrdersHelper;
-use StoreKeeper\ApiWrapper\ModuleApiWrapper;
 use Magento\Checkout\Model\Session;
 use Magento\Framework\App\Action\Context;
+use StoreKeeper\StoreKeeper\Api\OrderApiClient;
+use StoreKeeper\StoreKeeper\Api\PaymentApiClient;
 
 class Redirect extends Action
 {
@@ -23,6 +24,8 @@ class Redirect extends Action
     private OrderRepository $orderRepository;
     private Auth $authHelper;
     private OrdersHelper $ordersHelper;
+    private OrderApiClient $orderApiClient;
+    private PaymentApiClient $paymentApiClient;
 
     /**
      * Redirect constructor
@@ -33,6 +36,8 @@ class Redirect extends Action
      * @param OrderRepository $orderRepository
      * @param Auth $authHelper
      * @param OrdersHelper $ordersHelper
+     * @param OrderApiClient $orderApiClient
+     * @param PaymentApiClient $paymentApiClient
      */
     public function __construct(
         Context $context,
@@ -40,13 +45,17 @@ class Redirect extends Action
         QuoteRepository $quoteRepository,
         OrderRepository $orderRepository,
         Auth $authHelper,
-        OrdersHelper $ordersHelper
+        OrdersHelper $ordersHelper,
+        OrderApiClient $orderApiClient,
+        PaymentApiClient $paymentApiClient
     ) {
         $this->checkoutSession = $checkoutSession;
         $this->quoteRepository = $quoteRepository;
         $this->orderRepository = $orderRepository;
         $this->authHelper = $authHelper;
         $this->ordersHelper = $ordersHelper;
+        $this->orderApiClient = $orderApiClient;
+        $this->paymentApiClient = $paymentApiClient;
         parent::__construct($context);
     }
 
@@ -62,11 +71,11 @@ class Redirect extends Action
             $order = $this->checkoutSession->getLastRealOrder();
             $payload = $this->ordersHelper->prepareOrder($order, false);
             $redirect_url =  $this->_url->getUrl(self::FINISH_PAGE_ROUTE);
-            $shopModule = $this->authHelper->getModule('ShopModule', $order->getStoreid());
+            $shopModule = $this->orderApiClient->getShopModule($order->getStoreid());
             $products = $this->getPaymentProductFromOrderItems($payload['order_items']);
             $billingInfo = $this->applyAddressName($payload['billing_address'] ?? $payload['shipping_address']);
 
-            $payment = $this->getStoreKeeperPayment($storeKeeperPaymentMethodId, $shopModule, $redirect_url, $order, $payload, $billingInfo, $products);
+            $payment = $this->paymentApiClient->getStoreKeeperPayment($storeKeeperPaymentMethodId, $redirect_url, $order, $payload, $billingInfo, $products);
 
             $order->setStorekeeperPaymentId($payment['id']);
 
@@ -88,8 +97,8 @@ class Redirect extends Action
             $this->checkoutSession->replaceQuote($quote);
             $this->quoteRepository->save($quote);
 
-            $this->getResponse()->setNoCacheHeaders();
-            $this->getResponse()->setRedirect($payment['payment_url']);
+            $this->_response->setNoCacheHeaders();
+            $this->_response->setRedirect($payment['payment_url']);
 
         } catch (\Exception $e) {
             $this->_getCheckoutSession()->restoreQuote();
@@ -150,70 +159,5 @@ class Redirect extends Action
         $customerInfo['contact_address']['name'] = $customerInfo['contact_address']['name']??  $personName;
 
         return $customerInfo;
-    }
-
-    /**
-     * Get Order total
-     *
-     * @param array $items
-     * @param ModuleApiWrapper $shopModule
-     * @return float
-     */
-    function getOrderTotal(array $items, ModuleApiWrapper $shopModule): float
-    {
-        $order = $shopModule->newVolatileOrder(array(
-            'order_items' => $items,
-        ));
-
-        return $order['value_wt'];
-    }
-
-    /**
-     * Get SK payment
-     *
-     * @param ?int $storeKeeperPaymentMethodId
-     * @param ModuleApiWrapper $shopModule
-     * @param string $redirect_url
-     * @param OrderInterface $order
-     * @param array $payload
-     * @param array $billingInfo
-     * @param array $products
-     * @return array
-     */
-    private function getStoreKeeperPayment(
-        ?int $storeKeeperPaymentMethodId,
-        ModuleApiWrapper $shopModule,
-        string $redirect_url,
-        OrderInterface $order,
-        array $payload,
-        array $billingInfo,
-        array $products
-    ): array {
-        if ($storeKeeperPaymentMethodId) {
-            return $shopModule->newWebShopPaymentWithReturn(
-                [
-                    'redirect_url' => $redirect_url . '?trx={{trx}}&orderID=' . $order->getId(),
-                    'amount' => $this->getOrderTotal($payload['order_items'], $shopModule),
-                    'title' => 'Order: ' . $order->getIncrementId(),
-                    'provider_method_id' => $storeKeeperPaymentMethodId,
-                    'relation_data_id' => $payload['relation_data_id'],
-                    'relation_data_snapshot' => $billingInfo,
-                    'end_user_ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'products' => $products,
-                ]
-            );
-        } else {
-            return $shopModule->newLinkWebShopPaymentForHookWithReturn(
-                [
-                    'redirect_url' => $redirect_url . '?trx={{trx}}&orderID=' . $order->getId(),
-                    'amount' => $this->getOrderTotal($payload['order_items'], $shopModule),
-                    'title' => 'Order: ' . $order->getIncrementId(),
-                    'relation_data_id' => $payload['relation_data_id'],
-                    'relation_data_snapshot' => $billingInfo,
-                    'end_user_ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-                    'products' => $products,
-                ]
-            );
-        }
     }
 }

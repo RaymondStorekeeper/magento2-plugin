@@ -9,8 +9,8 @@ use Magento\Framework\Math\Random;
 use Magento\Framework\Module\ModuleList;
 use Magento\Store\Model\StoreManagerInterface;
 use Ramsey\Uuid\Generator\PeclUuidRandomGenerator;
-use StoreKeeper\ApiWrapper\ApiWrapper;
-use StoreKeeper\ApiWrapper\Wrapper\FullJsonAdapter;
+use StoreKeeper\StoreKeeper\Api\OrderApiClient;
+use StoreKeeper\StoreKeeper\Api\ProductApiClient;
 
 class Auth extends \Magento\Framework\App\Helper\AbstractHelper
 {
@@ -29,6 +29,8 @@ class Auth extends \Magento\Framework\App\Helper\AbstractHelper
     private PeclUuidRandomGenerator $uuidRandomGenerator;
     private ProductMetadataInterface $productMetadata;
     private ModuleList $moduleList;
+    private OrderApiClient $orderApiClient;
+    private ProductApiClient $productApiClient;
 
     /**
      * Constructor
@@ -41,6 +43,8 @@ class Auth extends \Magento\Framework\App\Helper\AbstractHelper
      * @param PeclUuidRandomGenerator $uuidRandomGenerator
      * @param ProductMetadataInterface $productMetadata
      * @param ModuleList $moduleList
+     * @param OrderApiClient $orderApiClient
+     * @param ProductApiClient $productApiClient
      */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
@@ -50,7 +54,9 @@ class Auth extends \Magento\Framework\App\Helper\AbstractHelper
         Random $random,
         PeclUuidRandomGenerator $uuidRandomGenerator,
         ProductMetadataInterface $productMetadata,
-        ModuleList $moduleList
+        ModuleList $moduleList,
+        OrderApiClient $orderApiClient,
+        ProductApiClient $productApiClient
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->storeManager = $storeManager;
@@ -60,6 +66,8 @@ class Auth extends \Magento\Framework\App\Helper\AbstractHelper
         $this->uuidRandomGenerator = $uuidRandomGenerator;
         $this->productMetadata = $productMetadata;
         $this->moduleList = $moduleList;
+        $this->orderApiClient = $orderApiClient;
+        $this->productApiClient = $productApiClient;
     }
 
     /**
@@ -100,32 +108,6 @@ class Auth extends \Magento\Framework\App\Helper\AbstractHelper
         );
 
         $this->cache->cleanType('config');
-    }
-
-    /**
-     * Get Store information
-     *
-     * @param $storeId
-     * @return mixed
-     */
-    public function getStoreInformation($storeId)
-    {
-        return $this->getModule('ShopModule', $storeId)->getShopSettingsForHooks();
-    }
-
-    public function getTaxRates($storeId, $countryId)
-    {
-        return $this->getModule('ProductsModule', $storeId)->listTaxRates(
-            0,
-            100,
-            null,
-            [
-                [
-                    'name' => 'country_iso2__=',
-                    'val' => $countryId
-                ]
-            ]
-        );
     }
 
     /**
@@ -320,67 +302,6 @@ class Auth extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $this->websiteShopIds;
-    }
-
-    /**
-     * Get SK adapter
-     *
-     * @param $storeId
-     * @return FullJsonAdapter
-     * @throws \Exception
-     */
-    public function getAdapter($storeId)
-    {
-        $syncAuth = $this->getSyncAuth($storeId);
-        $apiUrl = null;
-        if (!empty($syncAuth) && isset($syncAuth['account'])) {
-            $apiUrl = "https://api-{$syncAuth['account']}.storekeepercloud.com/";
-        } else {
-            throw new \Exception("An error occurred: Store #{$storeId} is not connected to StoreKeeper");
-        }
-
-        $adapter = new FullJsonAdapter($apiUrl);
-        return $adapter;
-    }
-
-    /**
-     * Obtain module entity from SK API wrapper
-     *
-     * @param string $module
-     * @param $storeId
-     * @return \StoreKeeper\ApiWrapper\ModuleApiWrapperInterface
-     * @throws \Exception
-     */
-    public function getModule(string $module, $storeId)
-    {
-        $api = new ApiWrapper($this->getAdapter($storeId), $this->getAuthWrapper($storeId));
-        return $api->getModule($module);
-    }
-
-    /**
-     * Authorize SK API wrapper
-     *
-     * @param $storeId
-     * @return \StoreKeeper\ApiWrapper\Auth
-     * @throws \Exception
-     */
-    public function getAuthWrapper($storeId)
-    {
-        if (is_null($this->auth)) {
-            $sync_auth = $this->getSyncAuth($storeId);
-            if (empty($sync_auth)) {
-                throw new \Exception(
-                    "Unable to authenticate with StoreKeeper. Did you add your API key to your store?"
-                );
-            }
-
-            $this->auth = new \StoreKeeper\ApiWrapper\Auth();
-            $this->auth->setSubuser($sync_auth['subaccount'], $sync_auth['user']);
-            $this->auth->setApiKey($sync_auth['apikey']);
-            $this->auth->setAccount($sync_auth['account']);
-        }
-
-        return $this->auth;
     }
 
     /**

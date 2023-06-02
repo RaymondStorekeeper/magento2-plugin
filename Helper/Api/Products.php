@@ -26,6 +26,9 @@ use Magento\Store\Model\StoreManagerInterface;
 use Parsedown;
 use Psr\Log\LoggerInterface;
 
+/**
+ * @depracated
+ */
 class Products extends \Magento\Framework\App\Helper\AbstractHelper
 {
     const API_URL = 'https://api-creativectdev.storekeepercloud.com';

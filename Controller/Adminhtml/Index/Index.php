@@ -11,12 +11,14 @@ use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Message\ManagerInterface;
 use StoreKeeper\StoreKeeper\Helper\Api\Auth;
+use StoreKeeper\StoreKeeper\Api\OrderApiClient;
 
 class Index extends Action implements HttpGetActionInterface
 {
     private Http $request;
     private Auth $authHelper;
     private Url $url;
+    private OrderApiClient $orderApiClient;
 
     /**
      * Constructor
@@ -26,13 +28,15 @@ class Index extends Action implements HttpGetActionInterface
      * @param Auth $authHelper
      * @param ManagerInterface $messageManager
      * @param Url $url
+     * @param OrderApiClient $orderApiClient
      */
     public function __construct(
         Context $context,
         Http $request,
         Auth $authHelper,
         ManagerInterface $messageManager,
-        Url $url
+        Url $url,
+        OrderApiClient $orderApiClient
     ) {
         parent::__construct($context);
 
@@ -40,6 +44,7 @@ class Index extends Action implements HttpGetActionInterface
         $this->authHelper = $authHelper;
         $this->messageManager = $messageManager;
         $this->url = $url;
+        $this->orderApiClient = $orderApiClient;
     }
 
     /**
@@ -74,7 +79,7 @@ class Index extends Action implements HttpGetActionInterface
         $storeId = $this->request->getParam('storeId');
         if ($this->authHelper->isConnected($storeId)) {
             try {
-                $storeInformation = $this->authHelper->getStoreInformation($storeId);
+                $storeInformation = $this->orderApiClient->getStoreInformation($storeId);
                 $this->authHelper->setStoreInformation($storeId, $storeInformation);
             } catch (\Exception $e) {
                 $this->messageManager->addError(__($e->getMessage()));
